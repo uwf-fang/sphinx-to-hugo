@@ -130,6 +130,31 @@ class ConversionContract(unittest.TestCase):
         self.assertIn('non-overlapping', result.stderr)
         self.assertFalse((ROOT / 'examples/typical/output').exists())
 
+    def test_markdown_root_document(self):
+        for configured in (False, True):
+            with self.subTest(configured=configured), tempfile.TemporaryDirectory() as directory:
+                source = Path(directory) / 'source'
+                source.mkdir()
+                (source / 'index.md').write_text('# Markdown home\n\nA Markdown root document.\n')
+                options = ['--extension', 'myst_parser']
+                if configured:
+                    (source / 'conf.py').write_text('extensions = ["myst_parser"]\nsource_suffix = {".md": "markdown"}\n')
+                    options = ['--config-dir', str(source)]
+                out = Path(directory) / 'out'
+                result = self.run_cli(source, out, *options)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                page = (out / 'hugo/content/_index.md').read_text()
+                self.assertIn('Markdown root document.', page)
+                self.assertIn('migration_source: "index.md"', page)
+
+    def test_root_must_stay_inside_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / 'out'
+            result = self.run_cli(ROOT / 'examples/typical', out, '--root', '../index')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('within the source directory', result.stderr)
+            self.assertFalse(out.exists())
+
     def test_project_configuration_preserves_markdown_and_exclusions(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / 'source'

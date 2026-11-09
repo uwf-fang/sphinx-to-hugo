@@ -23,6 +23,8 @@ from sphinx_markdown_builder.contexts import SubContext, SubContextParams, Title
 from sphinx_markdown_builder.escape import escape_markdown_chars
 from sphinx_markdown_builder.translator import MarkdownTranslator, pushing_context, pushing_status
 
+from sphinx_to_hugo import __version__
+
 logger = logging.getLogger(__name__)
 
 
@@ -413,4 +415,4 @@ def setup(app):
     app.setup_extension('sphinx_markdown_builder')
     app.add_builder(HugoBuilder)
     app.add_config_value('hugo_url_prefix', '/', 'env', types=[str])
-    return dict(version='0.1.0', parallel_read_safe=True, parallel_write_safe=False)
+    return dict(version=__version__, parallel_read_safe=True, parallel_write_safe=False)

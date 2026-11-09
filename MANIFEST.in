@@ -1,0 +1,3 @@
+include LICENSE README.md requirements-lock.txt
+recursive-include examples *.rst *.txt *.svg *.py
+recursive-include tests *.py

@@ -1,0 +1,48 @@
+name: Test and package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Graphviz and Hugo
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes graphviz
+          curl --fail --location --output "$RUNNER_TEMP/hugo.tar.gz" https://github.com/gohugoio/hugo/releases/download/v0.169.0/hugo_0.169.0_linux-amd64.tar.gz
+          mkdir -p "$RUNNER_TEMP/hugo"
+          tar -xzf "$RUNNER_TEMP/hugo.tar.gz" -C "$RUNNER_TEMP/hugo"
+          echo "$RUNNER_TEMP/hugo" >> "$GITHUB_PATH"
+      - name: Install package and development tools
+        run: python -m pip install '.[project-migration,dev]'
+      - name: Check CLI and conversion tests
+        run: |
+          sphinx-to-hugo --version
+          python -m unittest discover -s tests -v
+      - name: Build and validate distributions
+        run: |
+          python -m build
+          python -m twine check dist/*
+      - name: Install and exercise the wheel outside the checkout
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-test"
+          "$RUNNER_TEMP/wheel-test/bin/python" -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-test/bin/sphinx-to-hugo" --version
+          "$RUNNER_TEMP/wheel-test/bin/sphinx-to-hugo" convert --source "$GITHUB_WORKSPACE/examples/typical" --out "$RUNNER_TEMP/wheel-conversion" --prefix /teaching/
+          hugo --source "$RUNNER_TEMP/wheel-conversion/hugo" --cacheDir "$RUNNER_TEMP/hugo-cache" --panicOnWarning

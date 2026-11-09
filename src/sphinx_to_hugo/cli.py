@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from sphinx_to_hugo import __version__
+
 
 def write_hugo_support(root):
     files = {
@@ -55,8 +57,11 @@ def build(source, output, builder, root_doc, prefix, extra_extensions, config_di
     conf = output / '_config'
     conf.mkdir()
     extensions = ['sphinx.ext.graphviz', 'sphinx_to_hugo.extension', *extra_extensions]
+    suffixes = {'.rst': 'restructuredtext'}
+    if 'myst_parser' in extra_extensions:
+        suffixes['.md'] = 'markdown'
     values = dict(project='Conversion pilot', extensions=extensions, root_doc=root_doc,
-                  source_suffix={'.rst': 'restructuredtext'}, exclude_patterns=['_build', 'conf.py'],
+                  source_suffix=suffixes, exclude_patterns=['_build', 'conf.py'],
                   markdown_flavor='github', markdown_anchor_sections=True,
                   markdown_anchor_signatures=True, markdown_uri_doc_suffix='.md',
                   hugo_url_prefix=prefix, nitpicky=True, graphviz_output_format='svg')
@@ -95,12 +100,13 @@ def build(source, output, builder, root_doc, prefix, extra_extensions, config_di
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
     parser.add_argument('command', choices=['pilot', 'convert'])
-    parser.add_argument('--source', required=True, type=Path)
-    parser.add_argument('--out', required=True, type=Path)
-    parser.add_argument('--root', default='index')
-    parser.add_argument('--prefix', default='/')
-    parser.add_argument('--extension', action='append', default=[])
+    parser.add_argument('--source', required=True, type=Path, help='Input documentation source directory.')
+    parser.add_argument('--out', required=True, type=Path, help='Fresh output directory, separate from input.')
+    parser.add_argument('--root', default='index', help='Root document name without .rst or .md (default: index).')
+    parser.add_argument('--prefix', default='/', help='Output URL prefix, for example /teaching/.')
+    parser.add_argument('--extension', action='append', default=[], help='Additional installed Sphinx extension; repeat as needed.')
     parser.add_argument('--config-dir', type=Path, help='Load a trusted project conf.py before migration overrides.')
     args = parser.parse_args(argv)
     prefix = urlsplit(args.prefix)
@@ -111,8 +117,14 @@ def main(argv=None):
     config_dir = args.config_dir.resolve() if args.config_dir else None
     if config_dir and not (config_dir / 'conf.py').is_file():
         parser.error('Config directory must contain conf.py.')
-    if not source.is_dir() or not (source / (args.root + '.rst')).is_file():
-        parser.error('Source must contain the root .rst document.')
+    root = Path(args.root)
+    if not root.parts or root.is_absolute() or '..' in root.parts or '\\' in args.root:
+        parser.error('Root must be a document name within the source directory, without a file extension.')
+    root_documents = [source / (args.root + suffix) for suffix in ('.rst', '.md')]
+    if not source.is_dir() or not any(path.is_file() for path in root_documents):
+        parser.error('Source must contain the root .rst or .md document.')
+    if not root_documents[0].is_file() and not config_dir and 'myst_parser' not in args.extension:
+        parser.error('A Markdown root requires --config-dir or --extension myst_parser.')
     if output.is_relative_to(source) or source.is_relative_to(output):
         parser.error('Output and input must be separate, non-overlapping directories.')
     if output.exists():

@@ -1,16 +1,32 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sphinx-to-hugo-pilot"
-version = "0.1.0"
-description = "Research pilot: Sphinx-resolved Markdown with Hugo migration metadata"
+name = "sphinx-to-hugo"
+version = "0.2.0"
+description = "Convert Sphinx-resolved documentation to Hugo Markdown with navigation and migration reports"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Xingang (Ian) Fang" }]
 requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Documentation",
+]
 dependencies = ["Sphinx==8.1.3", "sphinx-markdown-builder==0.6.11", "tabulate==0.9.0"]
 
 [project.optional-dependencies]
 project-migration = ["myst-parser==4.0.1"]
+dev = ["build>=1.2", "twine>=6"]
+
+[project.urls]
+Repository = "https://github.com/uwf-fang/sphinx-to-hugo"
+Issues = "https://github.com/uwf-fang/sphinx-to-hugo/issues"
 
 [project.scripts]
 sphinx-to-hugo = "sphinx_to_hugo.cli:main"
